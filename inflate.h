@@ -16,6 +16,8 @@
 #  define GUNZIP
 #endif
 
+#include "zutil.h"
+
 /* Possible inflate modes between inflate() calls */
 typedef enum {
     HEAD = 16180,   /* i: waiting for magic header */
@@ -123,3 +125,59 @@ struct inflate_state {
     int back;                   /* bits back of last unprocessed length/lit */
     unsigned was;               /* initial length of match */
 };
+
+
+static inline void inf_crc_copy(z_streamp strm, unsigned char FAR *const dst,
+        const unsigned char FAR *const src, size_t len)
+{
+    struct inflate_state *const state = (struct inflate_state *const)strm->state;
+
+    zmemcpy(dst, src, len);
+
+#if !defined(NO_GZIP)
+    if ((state->wrap & 2))
+        strm->adler = state->check = crc32(state->check, dst, len);
+    else
+#endif
+    if ((state->wrap & 1))
+        strm->adler = state->check = adler32(state->check, dst, len);
+}
+
+static inline void window_output_flush(z_streamp strm)
+{
+    struct inflate_state *const state = (struct inflate_state *const)strm->state;
+
+    size_t woff, roff, copysz;
+    size_t nexto_len;
+
+    if (state->wnext > strm->avail_out) {
+        nexto_len = strm->avail_out;
+        copysz = state->wnext - strm->avail_out;
+    } else {
+        nexto_len = state->wnext;
+        copysz = 0;
+    }
+
+    inf_crc_copy(strm, strm->next_out, state->window + state->wsize, nexto_len);
+
+    strm->avail_out -= nexto_len;
+    strm->next_out += nexto_len;
+
+    if (state->whave + nexto_len > state->wsize) {
+        woff = 0;
+        roff = nexto_len;
+        copysz += state->wsize;
+    } else {
+        roff = state->wsize - state->whave;
+        woff = state->wsize - state->whave - nexto_len;
+        copysz += state->whave + nexto_len;
+    }
+
+    memmove(state->window + woff, state->window + roff, copysz);
+
+    state->wnext -= nexto_len;
+    state->whave += nexto_len;
+    if (state->whave > state->wsize)
+        state->whave = state->wsize;
+}
+
