@@ -1055,6 +1055,9 @@ local void compress_block(s, ltree, dtree)
     unsigned code;      /* the code to send */
     int extra;          /* number of extra bits to send */
 
+    uint64_t val;
+    int len;
+
     if (s->last_lit != 0) do {
         dist = s->d_buf[lx];
         lc = s->l_buf[lx++];
@@ -1068,9 +1071,13 @@ local void compress_block(s, ltree, dtree)
 #endif /* !ZLIB_DEBUG */
             send_code(s, lc, ltree); /* send a literal byte */
         } else {
+            uint64_t val;
+            int len;
             /* Here, lc is the match length - MIN_MATCH */
             code = _length_code[lc];
 #ifdef ZLIB_DEBUG
+            val = ltree[code+LITERALS+1].Code;
+            len = ltree[code+LITERALS+1].Len;
             Tracevv((stderr," l %2d v %4llx ", len, val));
             Assert(len > 0 && len <= 64, "invalid length");
             s->bits_sent += len;
@@ -1115,8 +1122,8 @@ local void compress_block(s, ltree, dtree)
     } while (lx < s->last_lit);
 
 #ifdef ZLIB_DEBUG
-    uint64_t val = ltree[END_BLOCK].Code;
-    int len = ltree[END_BLOCK].Len;
+    val = ltree[END_BLOCK].Code;
+    len = ltree[END_BLOCK].Len;
     Tracevv((stderr," l %2d v %4llx ", len, val));
     Assert(len > 0 && len <= 64, "invalid length");
     s->bits_sent += len;

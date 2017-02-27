@@ -1295,6 +1295,7 @@ local uint32_t longest_match(s, cur_match)
     Assert((uint64_t)s->strstart <= s->window_size-MIN_LOOKAHEAD, "need lookahead");
 
     do {
+        int cont ;
         Assert(cur_match < s->strstart, "no future");
 
         /* Skip to next match if the match length cannot increase
@@ -1307,11 +1308,10 @@ local uint32_t longest_match(s, cur_match)
          */
 #if (MAX_MATCH == 258)
 
-        typeof(s->window) win = s->window;
-        int cont = 1;
+        cont = 1;
         do
         {
-            match = win + cur_match;
+            match = s->window + cur_match;
             if (likely(*(uint32_t *)(match + best_len - 3) != scan_end))
             {
                 if ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0)
@@ -2013,6 +2013,9 @@ local block_state deflate_slow(s, flush)
          * match is not better, output the previous match:
          */
         if (s->prev_length >= MIN_MATCH && s->match_length <= s->prev_length) {
+            uint32_t mov_fwd;
+            uint32_t insert_cnt;
+
             uint32_t max_insert = s->strstart + s->lookahead - MIN_MATCH;
             /* Do not insert strings in hash table beyond this. */
 
@@ -2028,8 +2031,8 @@ local block_state deflate_slow(s, flush)
              */
             s->lookahead -= s->prev_length-1;
             {
-                uint32_t mov_fwd = s->prev_length - 2;
-                uint32_t insert_cnt = mov_fwd;
+                mov_fwd = s->prev_length - 2;
+                insert_cnt = mov_fwd;
                 if (unlikely(insert_cnt > max_insert - s->strstart))
                     insert_cnt = max_insert - s->strstart;
 
