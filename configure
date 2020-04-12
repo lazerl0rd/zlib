@@ -826,6 +826,24 @@ EOF
   fi
 fi
 
+# Check for PCLMUL support
+cat > $test.c << EOF
+#include <cpuid.h>
+int
+main(int argc, char** argv) {
+    unsigned int eax, ebx, ecx, edx;
+    __get_cpuid(1, &eax, &ebx, &ecx, &edx);
+    return (ecx & bit_PCLMUL) ?  0 : 1;
+}
+EOF
+if tryboth $CC -c $CFLAGS $test.c; then
+  CFLAGS="$CFLAGS -DHAS_PCLMUL -mpclmul"
+  SFLAGS="$SFLAGS -DHAS_PCLMUL -mpclmul"
+  echo "Checking for PCLMUL support... Yes." | tee -a configure.log
+else
+  echo "Checking for PCLMUL support... No." | tee -a configure.log
+fi
+
 # show the results in the log
 echo >> configure.log
 echo ALL = $ALL >> configure.log
