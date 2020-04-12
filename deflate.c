@@ -207,20 +207,29 @@ local void slide_hash(s)
 
     n = s->hash_size;
     p = &s->head[n];
-    do {
-        m = *--p;
-        *p = (Pos)(m >= wsize ? m - wsize : NIL);
-    } while (--n);
+    {
+        int i;
+        typeof(p) q = p - n;
+        for (i = 0; i < n; i++)
+        {
+            Pos m = *q;
+            Pos t = wsize;
+            *q++ = (Pos)(m >= t ? m - t : NIL);
+        }
+    }
     n = wsize;
 #ifndef FASTEST
     p = &s->prev[n];
-    do {
-        m = *--p;
-        *p = (Pos)(m >= wsize ? m - wsize : NIL);
-        /* If n is not on any hash chain, prev[n] is garbage but
-         * its value will never be used.
-         */
-    } while (--n);
+    {
+        int i;
+        typeof(p) q = p - n;
+        for (i = 0; i < n; i++)
+        {
+            Pos m = *q;
+            Pos t = wsize;
+            *q++ = (Pos)(m >= t ? m - t : NIL);
+        }
+    }
 #endif
 }
 
