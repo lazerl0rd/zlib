@@ -156,7 +156,15 @@ local const config configuration_table[10] = {
 
 #ifdef HAS_SSE42
 #include "contrib/amd64/hash.inc"
-#endif
+#elif defined(HAS_ARMCRC)
+
+#include <arm_neon.h>
+#include <arm_acle.h>
+/* Perform a match on at least four bytes and therefore the hash should be for 4 bytes */
+#define UPDATE_HASH(s, h, str) (h = __crc32cw(0, *(uInt *)(str - 2)) & s->hash_mask)
+#define INIT_HASH
+
+#endif /* HAS_ARMCRC */
 
 /* ===========================================================================
  * Update a hash value with the given input byte
@@ -226,6 +234,27 @@ local void slide_hash(s)
     uint32_t wsize = s->w_size;
 
     n = s->hash_size;
+#ifdef HAS_ARMCRC
+    uint16x8_t W;
+    uint16_t *q;
+    W = vmovq_n_u16(wsize);
+    q = (uint16_t *)s->head;
+
+    for (i = 0; i < n / 8; i++)
+    {
+        vst1q_u16(q, vqsubq_u16(vld1q_u16(q), W));
+        q += 8;
+    }
+
+    n = wsize;
+    q = (uint16_t *)s->prev;
+
+    for (i = 0; i < n / 8; i++)
+    {
+        vst1q_u16(q, vqsubq_u16(vld1q_u16(q), W));
+        q += 8;
+    }
+#else
     p = &s->head[n];
     {
         int i;
@@ -250,6 +279,7 @@ local void slide_hash(s)
             *q++ = (Pos)(m >= t ? m - t : NIL);
         }
     }
+#endif /* HAS_ARMCRC */
 #endif
 }
 

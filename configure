@@ -866,6 +866,23 @@ else
   echo "Checking for SSE4.2 support... No." | tee -a configure.log
 fi
 
+# Check for ARMv8 Crypto support
+cat > $test.c << EOF
+#include <arm_neon.h>
+#include <arm_acle.h>
+void foo(void) {
+  __crc32cw(0, 0);
+  vqsubq_u16(vmovq_n_u16(1), vmovq_n_u16(2));
+}
+EOF
+if tryboth $CC -c $CFLAGS $test.c; then
+  CFLAGS="$CFLAGS -DHAS_ARMCRC -march=armv8-a+crc"
+  SFLAGS="$SFLAGS -DHAS_ARMCRC -march=armv8-a+crc"
+  echo "Checking for ARMv8 Crypto support... Yes." | tee -a configure.log
+else
+  echo "Checking for ARMv8 Crypto support... No." | tee -a configure.log
+fi
+
 # show the results in the log
 echo >> configure.log
 echo ALL = $ALL >> configure.log
