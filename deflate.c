@@ -1271,18 +1271,9 @@ local uInt longest_match(s, cur_match)
     Posf *prev = s->prev;
     uInt wmask = s->w_mask;
 
-#ifdef UNALIGNED_OK
-    /* Compare two bytes at a time. Note: this is not always beneficial.
-     * Try with and without -DUNALIGNED_OK to check.
-     */
     register Bytef *strend = s->window + s->strstart + MAX_MATCH - 1;
     register ush scan_start = *(ushf*)scan;
     register ush scan_end   = *(ushf*)(scan+best_len-1);
-#else
-    register Bytef *strend = s->window + s->strstart + MAX_MATCH;
-    register Byte scan_end1  = scan[best_len-1];
-    register Byte scan_end   = scan[best_len];
-#endif
 
     /* The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
      * It is easy to get rid of this optimization if necessary.
@@ -1312,7 +1303,7 @@ local uInt longest_match(s, cur_match)
          * However the length of the match is limited to the lookahead, so
          * the output of deflate is not affected by the uninitialized values.
          */
-#if (defined(UNALIGNED_OK) && MAX_MATCH == 258)
+#if (MAX_MATCH == 258)
         /* This code assumes sizeof(unsigned short) == 2. Do not use
          * UNALIGNED_OK if your compiler uses a different size.
          */
@@ -1345,7 +1336,7 @@ local uInt longest_match(s, cur_match)
         len = (MAX_MATCH - 1) - (int)(strend-scan);
         scan = strend - (MAX_MATCH-1);
 
-#else /* UNALIGNED_OK */
+#else /* MAX_MATCH == 258 */
 
         if (match[best_len]   != scan_end  ||
             match[best_len-1] != scan_end1 ||
@@ -1382,12 +1373,7 @@ local uInt longest_match(s, cur_match)
             s->match_start = cur_match;
             best_len = len;
             if (len >= nice_match) break;
-#ifdef UNALIGNED_OK
             scan_end = *(ushf*)(scan+best_len-1);
-#else
-            scan_end1  = scan[best_len-1];
-            scan_end   = scan[best_len];
-#endif
         }
     } while ((cur_match = prev[cur_match & wmask]) > limit
              && --chain_length != 0);
