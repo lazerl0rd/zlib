@@ -1293,7 +1293,6 @@ local uInt longest_match(s, cur_match)
 
     do {
         Assert(cur_match < s->strstart, "no future");
-        match = s->window + cur_match;
 
         /* Skip to next match if the match length cannot increase
          * or if the match length is less than 2.  Note that the checks below
@@ -1304,11 +1303,29 @@ local uInt longest_match(s, cur_match)
          * the output of deflate is not affected by the uninitialized values.
          */
 #if (MAX_MATCH == 258)
-        /* This code assumes sizeof(unsigned short) == 2. Do not use
-         * UNALIGNED_OK if your compiler uses a different size.
-         */
-        if (*(ushf*)(match+best_len-1) != scan_end ||
-            *(ushf*)match != scan_start) continue;
+
+        typeof(s->window) win = s->window;
+        int cont = 1;
+        do
+        {
+            match = win + cur_match;
+            if (likely(*(ushf *)(match + best_len - 1) != scan_end))
+            {
+                if ((cur_match = prev[cur_match & wmask]) > limit && --chain_length != 0)
+                {
+                    continue;
+                }
+                else
+                    cont = 0;
+            }
+            break;
+        } while (1);
+
+        if (!cont)
+            break;
+
+        if (*(ushf *)match != scan_start)
+            continue;
 
         /* It is not necessary to compare scan[2] and match[2] since they are
          * always equal when the other bytes match, given that the hash keys
@@ -1319,24 +1336,38 @@ local uInt longest_match(s, cur_match)
          * necessary to put more guard bytes at the end of the window, or
          * to check more often for insufficient lookahead.
          */
-        Assert(scan[2] == match[2], "scan[2]?");
-        scan++, match++;
-        do {
-        } while (*(ushf*)(scan+=2) == *(ushf*)(match+=2) &&
-                 *(ushf*)(scan+=2) == *(ushf*)(match+=2) &&
-                 *(ushf*)(scan+=2) == *(ushf*)(match+=2) &&
-                 *(ushf*)(scan+=2) == *(ushf*)(match+=2) &&
-                 scan < strend);
-        /* The funny "do {}" generates better code on most compilers */
+        scan += 2, match += 2;
+        Assert(*scan == *match, "match[2]?");
+        do
+        {
+            unsigned long sv = *(unsigned long *)(void *)scan;
+            unsigned long mv = *(unsigned long *)(void *)match;
+            unsigned long xor = sv ^ mv;
+            if (xor)
+            {
+                int match_byte = __builtin_ctzl(xor) / 8;
+                scan += match_byte;
+                match += match_byte;
+                break;
+            }
+            else
+            {
+                scan += sizeof(unsigned long);
+                match += sizeof(unsigned long);
+            }
+        } while (scan < strend);
 
-        /* Here, scan <= window+strstart+257 */
-        Assert(scan <= s->window+(unsigned)(s->window_size-1), "wild scan");
-        if (*scan == *match) scan++;
+        if (scan > strend)
+            scan = strend;
+
+        Assert(scan <= s->window + (unsigned)(s->window_size - 1), "wild scan");
 
         len = (MAX_MATCH - 1) - (int)(strend-scan);
         scan = strend - (MAX_MATCH-1);
 
 #else /* MAX_MATCH == 258 */
+
+        match = s->window + cur_match;
 
         if (match[best_len]   != scan_end  ||
             match[best_len-1] != scan_end1 ||
