@@ -99,7 +99,7 @@ name:
 
 #define CONSTANT %xmm0
 
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 #define BUF     %rdi
 #define LEN     %rsi
 #define CRC     %edx
@@ -131,7 +131,7 @@ ENTRY(crc32_pclmul_le_16) /* buffer and buffer size are 16 bytes aligned */
 	pxor    CONSTANT, %xmm1
 	sub     $0x40, LEN
 	add     $0x40, BUF
-#ifndef __x86_64__
+#if !defined(__x86_64) && !defined(__x86_64__) && !defined(_M_X64)
 	/* This is for position independent code(-fPIC) support for 32bit */
 	call    delta
 delta:
@@ -140,7 +140,7 @@ delta:
 	cmp     $0x40, LEN
 	jb      less_64
 
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	movdqa .Lconstant_R2R1(%rip), CONSTANT
 #else
 	movdqa .Lconstant_R2R1 - delta(%ecx), CONSTANT
@@ -151,25 +151,25 @@ loop_64:/*  64 bytes Full cache line folding */
 	movdqa  %xmm1, %xmm5
 	movdqa  %xmm2, %xmm6
 	movdqa  %xmm3, %xmm7
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	movdqa  %xmm4, %xmm8
 #endif
 	PCLMULQDQ $00, CONSTANT, %xmm1
 	PCLMULQDQ $00, CONSTANT, %xmm2
 	PCLMULQDQ $00, CONSTANT, %xmm3
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	PCLMULQDQ $00, CONSTANT, %xmm4
 #endif
 	PCLMULQDQ $0x11, CONSTANT, %xmm5
 	PCLMULQDQ $0x11, CONSTANT, %xmm6
 	PCLMULQDQ $0x11, CONSTANT, %xmm7
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	PCLMULQDQ $0x11, CONSTANT, %xmm8
 #endif
 	pxor    %xmm5, %xmm1
 	pxor    %xmm6, %xmm2
 	pxor    %xmm7, %xmm3
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	pxor    %xmm8, %xmm4
 #else
 	/* xmm8 unsupported for x32 */
@@ -189,7 +189,7 @@ loop_64:/*  64 bytes Full cache line folding */
 	cmp     $0x40, LEN
 	jge     loop_64
 less_64:/*  Folding cache line into 128bit */
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	movdqa  .Lconstant_R4R3(%rip), CONSTANT
 #else
 	movdqa  .Lconstant_R4R3 - delta(%ecx), CONSTANT
@@ -236,7 +236,7 @@ fold_64:
 
 	/* final 32-bit fold */
 	movdqa  %xmm1, %xmm2
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	movdqa  .Lconstant_R5(%rip), CONSTANT
 	movdqa  .Lconstant_mask32(%rip), %xmm3
 #else
@@ -249,7 +249,7 @@ fold_64:
 	pxor    %xmm2, %xmm1
 
 	/* Finish up with the bit-reversed barrett reduction 64 ==> 32 bits */
-#ifdef __x86_64__
+#if defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
 	movdqa  .Lconstant_RUpoly(%rip), CONSTANT
 #else
 	movdqa  .Lconstant_RUpoly - delta(%ecx), CONSTANT
