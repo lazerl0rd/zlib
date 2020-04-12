@@ -171,10 +171,20 @@ local void gen_trees_header OF((void));
  * Output a short LSB first on the stream.
  * IN assertion: there is enough room in pendingBuf.
  */
-#define put_short(s, w) { \
-    put_byte(s, (uch)((w) & 0xff)); \
-    put_byte(s, (uch)((ush)(w) >> 8)); \
-}
+#if defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
+    defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)
+#define put_short(s, w)                                  \
+    {                                                    \
+        s->pending += 2;                                 \
+        *(ush *)(&s->pending_buf[s->pending - 2]) = (w); \
+    }
+#else
+#define put_short(s, w)                    \
+    {                                      \
+        put_byte(s, (uch)((w)&0xff));      \
+        put_byte(s, (uch)((ush)(w) >> 8)); \
+    }
+#endif
 
 /* ===========================================================================
  * Send a value on a given number of bits.
