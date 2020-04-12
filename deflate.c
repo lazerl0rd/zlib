@@ -160,17 +160,9 @@ local const config configuration_table[10] = {
 
 /* ===========================================================================
  * Update a hash value with the given input byte
- * IN  assertion: all calls to UPDATE_HASH are made with consecutive input
- *    characters, so that a running hash key can be computed from the previous
- *    key instead of complete recalculation each time.
  */
 #ifndef UPDATE_HASH
-__attribute__((always_inline)) local uInt
-_update_hash(deflate_state *s, uInt h, const unsigned char *str)
-{
-    return (((h << s->hash_shift) ^ *(str)) & (s->hash_mask));
-}
-#define UPDATE_HASH(s, h, str) (h = _update_hash(s, h, str), h)
+#define UPDATE_HASH(s, h, str) (h = *(uInt *)(str - 2), h ^= h >> 17, h ^= h >> 10, h &= s->hash_mask)
 #endif
 
 #ifndef INIT_HASH
@@ -1290,7 +1282,7 @@ local uInt longest_match(s, cur_match)
     uInt wmask = s->w_mask;
 
     register Bytef *strend = s->window + s->strstart + MAX_MATCH - 1;
-    register ush scan_start = *(ushf*)scan;
+    register uInt scan_start = *(uInt*)scan;
     register ush scan_end   = *(ushf*)(scan+best_len-1);
 
     /* The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
@@ -2016,12 +2008,7 @@ local block_state deflate_slow(s, flush)
             s->match_length = longest_match (s, hash_head);
             /* longest_match() sets match_start */
 
-            if (s->match_length <= 5 && (s->strategy == Z_FILTERED
-#if TOO_FAR <= 32767
-                || (s->match_length == MIN_MATCH &&
-                    s->strstart - s->match_start > TOO_FAR)
-#endif
-                )) {
+            if (s->match_length <= 5 && (s->strategy == Z_FILTERED )) {
 
                 /* If prev_match is also MIN_MATCH, match_start is garbage
                  * but we will ignore the current match anyway.
