@@ -97,7 +97,7 @@ unsigned start;         /* inflate()'s starting value for strm->avail_out */
 /*116   72 */ unsigned status;          /*          set when state chng*/
     } ar;
 
-#if defined( __GNUC__ ) && defined( __amd64__ ) && ! defined( __i386 )
+#if defined(__GNUC__) && defined(__amd64__) && !(defined(__i386) || defined(__i386__))
 #define PAD_AVAIL_IN 6
 #define PAD_AVAIL_OUT 258
 #else
@@ -131,8 +131,8 @@ unsigned start;         /* inflate()'s starting value for strm->avail_out */
         ar.bits += 8;
     }
 
-#if defined( __GNUC__ ) && defined( __amd64__ ) && ! defined( __i386 )
-    __asm__ __volatile__ (
+#if defined(__GNUC__) && defined(__amd64__) && !(defined(__i386) || defined(__i386__))
+	__asm__ __volatile__ (
 "        leaq    %0, %%rax\n"
 "        movq    %%rbp, 8(%%rax)\n"       /* save regs rbp and rsp */
 "        movq    %%rsp, (%%rax)\n"
@@ -467,7 +467,7 @@ unsigned start;         /* inflate()'s starting value for strm->avail_out */
           : "memory", "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi",
             "%r8", "%r9", "%r10", "%r11", "%r12", "%r13", "%r14", "%r15"
     );
-#elif ( defined( __GNUC__ ) || defined( __ICC ) ) && defined( __i386 )
+#elif (defined(__GNUC__) || defined(__ICC)) && (defined(__i386) || defined(__i386__))
     __asm__ __volatile__ (
 "        leal    %0, %%eax\n"
 "        movl    %%esp, (%%eax)\n"        /* save esp, ebp */
@@ -794,8 +794,8 @@ unsigned start;         /* inflate()'s starting value for strm->avail_out */
           : "m" (ar)
           : "memory", "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi"
     );
-#elif defined( _MSC_VER ) && ! defined( _M_AMD64 )
-    __asm {
+#elif defined(_MSC_VER) && !defined(_M_AMD64)
+	__asm {
 	lea	eax, ar
 	mov	[eax], esp         /* save esp, ebp */
 	mov	[eax+4], ebp
