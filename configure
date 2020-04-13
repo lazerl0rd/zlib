@@ -844,6 +844,28 @@ else
   echo "Checking for PCLMUL support... No." | tee -a configure.log
 fi
 
+# Check for SSE4.2 support
+cat > $test.c << EOF
+#include <cpuid.h>
+int
+main(int argc, char** argv) {
+    #ifdef __SSE4_2__ 
+        return 0;
+    #else
+        unsigned int eax, ebx, ecx, edx;
+        __get_cpuid(1, &eax, &ebx, &ecx, &edx);
+        return (ecx & bit_SSE4_2) ?  0 : 1;
+    #endif
+}
+EOF
+if tryboth $CC -c $CFLAGS $test.c; then
+  CFLAGS="$CFLAGS -DHAS_SSE42 -msse4.2"
+  SFLAGS="$SFLAGS -DHAS_SSE42 -msse4.2"
+  echo "Checking for SSE4.2 support... Yes." | tee -a configure.log
+else
+  echo "Checking for SSE4.2 support... No." | tee -a configure.log
+fi
+
 # show the results in the log
 echo >> configure.log
 echo ALL = $ALL >> configure.log
